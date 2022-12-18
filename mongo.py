@@ -1,0 +1,28 @@
+import pandas as pd
+import pymongo
+
+
+def _connect_mongo(mongo_uri, db):
+    """ A util for making a connection to mongo """
+    # set a 5-second connection timeout
+    client = pymongo.MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
+    try:
+        print(client.server_info())
+    except Exception:
+        print("Unable to connect to the server.")
+
+    return client[db]
+
+
+def read_mongo(mongo_uri, db, collection, query={}, no_id=True):
+    """ Read from Mongo and Store into DataFrame """
+    # Connect to MongoDB
+    db = _connect_mongo(mongo_uri, db)
+    # Make a query to the specific DB and Collection
+    cursor = db[collection].find(query)
+    # Expand the cursor and construct the DataFrame
+    df = pd.DataFrame(list(cursor))
+    # Delete the _id
+    if no_id:
+        del df['_id']
+    return df
