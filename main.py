@@ -36,13 +36,19 @@ def pre_processing():
     print(y)
     y = y.asfreq('D')
     y.fillna(method='bfill', inplace=True)
-    create_features(y, df_list[5])
+    create_features(y, df_list[5], df_list[0])
 
 
-def create_features(y, test_df):
+holidays = ['Local', 'Regional', 'National']
+
+
+def select_holiday(x):
+    return holidays[max([holidays.index(holiday) for holiday in x])]
+
+
+def create_features(y, test_df, holidays_events_df):
     # Fourier features
     fourier = CalendarFourier(freq='A', order=26)
-
     # const and trend features
     dp = DeterministicProcess(
         index=y.index,
@@ -52,19 +58,28 @@ def create_features(y, test_df):
         additional_terms=[fourier],
         drop=True,
     )
-
     X = dp.in_sample()
-    print(X)
+
+    holidays_events_trimmed_df = holidays_events_df[holidays_events_df.transferred == False]
+    holidays_events_trimmed_df = holidays_events_trimmed_df.set_index('date')
+    holidays_events_trimmed_df = holidays_events_trimmed_df['locale']
+    holidays_events_trimmed_df = holidays_events_trimmed_df.groupby('date').apply(select_holiday)
+    holidays_events_trimmed_df.unique()
+
+    X = X.merge(holidays_events_trimmed_df, how='left', on='date').fillna('NA')
     X['year'] = X.index.year
     X['day_of_week'] = X.index.dayofweek
-
     X_test = dp.out_of_sample(steps=16)
+    X_test = X_test.merge(holidays_events_trimmed_df, how='left', left_index=True, right_on='date').fillna('NA')
+
+    print("printing x test")
+    print(X_test)
+
     X_test.set_index('date', inplace=True)
     X_test['year'] = X_test.index.year
     X_test['day_of_week'] = X_test.index.dayofweek
 
     X_test.head()
-
     category_col = ['locale', 'year', 'day_of_week']
 
     common_df = pd.concat([X[category_col], X_test[category_col]])
@@ -78,10 +93,8 @@ def create_features(y, test_df):
 
     X.drop(columns=category_col, inplace=True)
     X_test.drop(columns=category_col, inplace=True)
-
     X.fillna(method='bfill', inplace=True)
     X_test.fillna(method='bfill', inplace=True)
-
     model = XGBRegressor(random_state=42)
 
     params = {'n_estimators': [5, 10, 15, 20, 50, 80, 100],
@@ -92,12 +105,11 @@ def create_features(y, test_df):
               }
     random_search = RandomizedSearchCV(model,
                                        param_distributions=params,
-                                       n_iter=20,
+                                       n_iter=5,
                                        scoring='neg_mean_squared_error',
                                        cv=3,
                                        verbose=1)
     random_search.fit(X, y)
-
     random_search.best_estimator_
     test_df.head()
     y_pred = random_search.predict(X_test)
