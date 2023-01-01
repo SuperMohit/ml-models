@@ -1,4 +1,4 @@
-# xboost-model
+# xgboost-model
 
 This repo consists of xgboost model to make a prediction on Time Series Data stored in MongoDB. 
 The Training and Test data is read from the MongoDB collections and converted into Pandas data frame. 
