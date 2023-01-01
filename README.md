@@ -6,7 +6,7 @@ There are multiple collections from where data can be read and analysed. The Tra
 The saved model can be further used for making prediction with other set of inputs. 
 
 
-This repository would be exposed via a Rapid Api GRPC. Which would take the relevent inputs for instance the training and test data location i.e Namespace in MongoDB.
+This repository would be exposed via graphQL which would take the relevent inputs for instance the training and test data location i.e Namespace in MongoDB.
 
  
 
