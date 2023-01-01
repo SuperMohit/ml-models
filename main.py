@@ -1,6 +1,6 @@
 import pandas as pd
 from statsmodels.tsa.deterministic import CalendarFourier, DeterministicProcess
-from mongo import read_mongo
+from mongo import read_mongo, save_mongo
 from xgboost import XGBRegressor
 from sklearn.model_selection import RandomizedSearchCV
 import pickle
@@ -65,38 +65,30 @@ def create_features(y, test_df, holidays_events_df):
     holidays_events_trimmed_df = holidays_events_trimmed_df['locale']
     holidays_events_trimmed_df = holidays_events_trimmed_df.groupby('date').apply(select_holiday)
     holidays_events_trimmed_df.unique()
-
     X = X.merge(holidays_events_trimmed_df, how='left', on='date').fillna('NA')
     X['year'] = X.index.year
     X['day_of_week'] = X.index.dayofweek
     X_test = dp.out_of_sample(steps=16)
     X_test = X_test.merge(holidays_events_trimmed_df, how='left', left_index=True, right_on='date').fillna('NA')
-
     print("printing x test")
     print(X_test)
-
     X_test.set_index('date', inplace=True)
     X_test['year'] = X_test.index.year
     X_test['day_of_week'] = X_test.index.dayofweek
-
     X_test.head()
     category_col = ['locale', 'year', 'day_of_week']
 
     common_df = pd.concat([X[category_col], X_test[category_col]])
     for col in category_col:
         common_df[col] = common_df[col].astype('category')
-
     dummies_df = pd.get_dummies(common_df, drop_first=True)
-
     X = pd.concat([X, dummies_df.iloc[:len(X)]], axis=1)
     X_test = pd.concat([X_test, dummies_df.iloc[-len(X_test):]], axis=1)
-
     X.drop(columns=category_col, inplace=True)
     X_test.drop(columns=category_col, inplace=True)
     X.fillna(method='bfill', inplace=True)
     X_test.fillna(method='bfill', inplace=True)
     model = XGBRegressor(random_state=42)
-
     params = {'n_estimators': [5, 10, 15, 20, 50, 80, 100],
               'learning_rate': [1e-3, 1e-2, 1e-1, 5e-1, 1],
               'min_child_weight': [1, 3, 5, 7, 10, 20],
@@ -105,9 +97,9 @@ def create_features(y, test_df, holidays_events_df):
               }
     random_search = RandomizedSearchCV(model,
                                        param_distributions=params,
-                                       n_iter=5,
+                                       n_iter=1,
                                        scoring='neg_mean_squared_error',
-                                       cv=3,
+                                       cv=2,
                                        verbose=1)
     random_search.fit(X, y)
     random_search.best_estimator_
@@ -117,12 +109,19 @@ def create_features(y, test_df, holidays_events_df):
                              columns=y.columns)
     y_pred_df = y_pred_df.stack(['family', 'store_nbr']).to_frame('sales').reset_index()
     y_pred_df.head()
-    test_df = test_df.reset_index().merge(y_pred_df, how='left', on=['date', 'family', 'store_nbr'])
-    test_df.head()
-    print("---------------------------------final prediction------------------------------------------------")
-    print(test_df)
+    print("prediction")
+    print(y_pred_df)
+    save_mongo(m_db, y_pred_df)
+    # test_df = test_df.reset_index().merge(y_pred_df, how='left', on=['date', 'family', 'store_nbr'])
+    # test_df.head()
+    # print("---------------------------------final prediction------------------------------------------------")
+    # print(test_df)
 
     # save random_search_to DB
+
+
+def save_prediction(db, pred_pd):
+    save_mongo(mongo_uri=mongo_uri, db=db, pred_pd=pred_pd, collection="sales_prediction")
 
 
 def save_model_to_db(model, client, db, dbconnection, model_name):
