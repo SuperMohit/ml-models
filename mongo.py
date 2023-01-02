@@ -33,7 +33,7 @@ def save_mongo(mongo_uri, db, collection, pred_pd):
     # Connect to MongoDB
     db = _connect_mongo(mongo_uri, db)
     # Make a query to the specific DB and Collection
-    ins_res = db[collection].insert_many(pred_pd.to_dict('records'), ordered=0)
+    ins_res = db[collection].insert_many(pred_pd.to_dict('records'))
     print("total inserts", len(ins_res.inserted_ids))
 
 

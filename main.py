@@ -18,6 +18,7 @@ coll_list = ["holidays", "oil", "stores", "train", "transactions", "test"]
 def train_all_models():
     df_list = []
     for coll in coll_list:
+        print("collection training...... ", coll)
         df = train_model(m_db, coll)
         df_list.append(df)
     return df_list
@@ -28,6 +29,9 @@ def train_model(db, coll):
     train_df.head()
     # print(train_df.to_string())
     return train_df
+
+
+""" group by date family and store nbr --- sales"""
 
 
 def pre_processing():
@@ -103,15 +107,20 @@ def create_features(y, test_df, holidays_events_df):
                                        verbose=1)
     random_search.fit(X, y)
     random_search.best_estimator_
+
+    save_model_to_db(random_search, m_db)
+    print("saving model to mongodb")
+
     test_df.head()
+
     y_pred = random_search.predict(X_test)
     y_pred_df = pd.DataFrame(y_pred.reshape((-1, y.shape[1])), index=test_df.groupby('date').mean().index,
                              columns=y.columns)
     y_pred_df = y_pred_df.stack(['family', 'store_nbr']).to_frame('sales').reset_index()
     y_pred_df.head()
-    print("prediction")
+    print("prediction..........")
     print(y_pred_df)
-    save_mongo(m_db, y_pred_df)
+    save_prediction(m_db, y_pred_df)
     # test_df = test_df.reset_index().merge(y_pred_df, how='left', on=['date', 'family', 'store_nbr'])
     # test_df.head()
     # print("---------------------------------final prediction------------------------------------------------")
