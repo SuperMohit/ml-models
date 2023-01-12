@@ -7,12 +7,12 @@ import pickle
 import time
 import pymongo
 
-mongo_uri = "mongodb+srv://store:store@cluster0.zc9ptyy.mongodb.net/test"
+mongo_uri =###
 m_db = "store"
 # Press the green button in the gutter to run the script.
 
 
-coll_list = ["holidays", "oil", "stores", "train", "transactions", "test"]
+coll_list = [##]
 
 
 def train_all_models():
@@ -43,7 +43,7 @@ def pre_processing():
     create_features(y, df_list[5], df_list[0])
 
 
-holidays = ['Local', 'Regional', 'National']
+holidays = [##]
 
 
 def select_holiday(x):
